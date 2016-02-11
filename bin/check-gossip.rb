@@ -48,7 +48,7 @@ class CheckGossip < Sensu::Plugin::Check::CLI
       current_machine_ips = get_current_machine_ipv4s
       event_store_ips = get_event_store_ips_from_dns cluster_dns
       gossip_address = get_matching_ips current_machine_ips, event_store_ips
-      #expected_nodes = event_store_ips.count
+      expected_nodes = event_store_ips.count
     end
 
     check_node gossip_address, gossip_port, expected_nodes
@@ -127,5 +127,3 @@ class CheckGossip < Sensu::Plugin::Check::CLI
     potential_ips.select { |info| ipv4_regex.match(info)}
   end
 end
-
-CheckGossip.new
