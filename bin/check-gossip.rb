@@ -102,7 +102,8 @@ class CheckGossip < Sensu::Plugin::Check::CLI
 
     puts "\tchecking for exactly 1 master"
     critical "\twrong number of node masters, there should be exactly 1" unless only_one_master? xml_doc
-    ok
+
+    ok "Gossiping with #{expected_nodes} nodes, all of which alive and with one master node."
   end
 
   def print_all(collection, type)
