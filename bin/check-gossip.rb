@@ -27,7 +27,7 @@
 require 'nokogiri'
 require 'open-uri'
 require 'socket'
-require 'Resolv'
+require 'resolv'
 require 'sensu-plugin/check/cli'
 
 

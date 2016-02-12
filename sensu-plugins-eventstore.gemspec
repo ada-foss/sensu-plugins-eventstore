@@ -2,7 +2,7 @@ require 'date'
 
 Gem::Specification.new do |s|
   s.name                   = 'sensu-plugins-eventstore'
-  s.version                = '0.0.1'
+  s.version                = '0.0.3'
   s.date                   = Date.today.to_s
   s.summary                = "sensu-plugins for event store"
   s.description            = "A collection of checks and metrics for event store, designed for sensu"
@@ -17,7 +17,7 @@ Gem::Specification.new do |s|
                                'development_status' => 'active',
                                'production_status'  => 'unstable - testing recommended',
                                'release_draft'      => 'false',
-                               'release_prerelease' => 'true'
+                               'release_prerelease' => 'false'
 				             }
   s.platform               = Gem::Platform::RUBY
   s.post_install_message   = 'You can use the embedded Ruby by setting EMBEDDED_RUBY=true in /etc/default/sensu'
