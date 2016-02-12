@@ -8,13 +8,13 @@ require 'sensu-plugin/check/cli'
 class CheckGossip < Sensu::Plugin::Check::CLI
   option :discover_via_dns,
          description: 'Whether to use DNS lookup to discover other cluster nodes. (Default: true)',
-         short: '-discover_via_dns',
+         short: '-v',
          long: '--discover_via_dns discover_via_dns',
          default: 'true'
 
   option :cluster_dns,
          description: 'DNS name from which other nodes can be discovered.',
-         short: '-dns',
+         short: '-d',
          long: '--cluster_dns cluster_dns',
          default: 'localhost'
 
