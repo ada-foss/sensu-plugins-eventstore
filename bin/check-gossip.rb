@@ -34,13 +34,13 @@ class CheckGossip < Sensu::Plugin::Check::CLI
          description: 'The total number of nodes we expect to be gossiping, including this one. (Default 2)',
          short: '-e',
          long: '--expected_nodes expected_nodes',
-         default: 2
+         default: '2'
 
   def run
     discover_via_dns = config[:discover_via_dns]
     gossip_address = config[:gossip_address]
     gossip_port = config[:gossip_port]
-    expected_nodes = config[:expected_nodes]
+    expected_nodes = config[:expected_nodes].to_i
 
     if discover_via_dns
       cluster_dns = config[:cluster_dns]
@@ -122,7 +122,7 @@ class CheckGossip < Sensu::Plugin::Check::CLI
     ipv4_regex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/
 
     potential_ips = Socket.ip_address_list.map{|info| info.ip_address}
-    #.select {|info| not loopback_regex.match(info)}
+                          .select {|info| not loopback_regex.match(info)}
 
     potential_ips.select { |info| ipv4_regex.match(info)}
   end
