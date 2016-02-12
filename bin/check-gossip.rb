@@ -1,3 +1,29 @@
+#! /usr/bin/env ruby
+#
+#   check-gossip
+#
+# DESCRIPTION:
+#    Checks the event store gossip page, making sure everything is working as expected
+# OUTPUT:
+#   plain text, metric data, etc
+#
+# PLATFORMS:
+#   Linux, Windows
+#
+# DEPENDENCIES:
+#   gem: sensu-plugin
+#   gem: nokogiri
+#
+# USAGE:
+#   #YELLOW
+#
+# NOTES:
+#
+# LICENSE:
+#   Released under the same terms as Sensu (the MIT license); see LICENSE
+#   for details.
+#
+
 require 'nokogiri'
 require 'open-uri'
 require 'socket'
