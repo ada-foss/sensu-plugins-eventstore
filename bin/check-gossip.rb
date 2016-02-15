@@ -73,7 +73,7 @@ class CheckGossip < Sensu::Plugin::Check::CLI
 
       current_machine_ips = get_current_machine_ipv4s
       event_store_ips = get_event_store_ips_from_dns cluster_dns
-      critical_failure_from_no_event_store_ips cluster_dns unless event_store_ips.any?
+      critical_no_event_store_ips cluster_dns unless event_store_ips.any?
       gossip_address = get_matching_ips current_machine_ips, event_store_ips
       expected_nodes = event_store_ips.count
     end
@@ -85,13 +85,12 @@ class CheckGossip < Sensu::Plugin::Check::CLI
     matched_ips = machine_ips.select do |ip_to_look_for|
       event_store_ips.find { |ip_to_match| ip_to_look_for == ip_to_match }
     end
-    critical_failure_from_no_matching_ips machine_ips, event_store_ips unless matched_ips.one?
+    critical_no_matching_ips machine_ips, event_store_ips unless matched_ips.one?
     matched_ips[0]
   end
 
-  def get_masters(document)
-    states = document.xpath '//State'
-    states.count { |state| state.content == 'Master' }
+  def get_master_count(document)
+    get_states(document).count { |state| state.content == 'Master' }
   end
 
   def get_members(document)
@@ -102,8 +101,17 @@ class CheckGossip < Sensu::Plugin::Check::CLI
     document.xpath '//IsAlive'
   end
 
+  def get_states(document)
+    document.xpath '//State'
+  end
+
   def only_one_master?(document)
-    get_masters(document) == 1
+    get_master_count(document) == 1
+  end
+
+  def all_nodes_master_or_slave?(document)
+    states = get_states document
+    states.all? {|node| node.content == "Master" || node.content == "Slave"}
   end
 
   def node_count_is_correct?(document, expected_count)
@@ -115,54 +123,29 @@ class CheckGossip < Sensu::Plugin::Check::CLI
     nodes.all? { |node| node_is_alive? node }
   end
 
-  def check_node(gossip_address, gossip_port, expected_nodes)
-    puts "\nchecking gossip at #{gossip_address}:#{gossip_port}"
-
-    begin
-      connection_url = "http://#{gossip_address}:#{gossip_port}/gossip?format=xml";
-      gossip = open(connection_url)
-
-    rescue StandardError
-      critical "Could not connect to #{connection_url} to check gossip, has event store fallen over on this node? "
-    end
-
-    xml_doc = Nokogiri::XML(gossip.readline)
-
-    puts "Checking for #{expected_nodes} nodes"
-    critical_failure_from_missing_nodes xml_doc, expected_nodes unless node_count_is_correct? xml_doc, expected_nodes
-
-    puts "Checking nodes for IsAlive state"
-    critical_failure_from_dead_nodes xml_doc, expected_nodes unless nodes_all_alive? xml_doc
-
-    puts "Checking for exactly 1 master"
-    critical_failure_from_incorrect_master_count xml_doc unless only_one_master? xml_doc
-
-    ok "#{gossip_address} is gossiping with #{expected_nodes} nodes. All nodes are marked as alive and one master node was found."
-  end
-
-  def critical_failure_from_no_matching_ips(machine_ips, event_store_ips)
+  def critical_no_matching_ips(machine_ips, event_store_ips)
     critical "this machine has ips of #{machine_ips}, event store (according to dns lookup) has ips of #{event_store_ips}. There should be exactly one match, but wasn't. "
   end
-  def critical_failure_from_no_event_store_ips(dns_name)
+  def critical_no_event_store_ips(dns_name)
     critical "could not find any ips at dns name #{dns_name} so cannot check gossips"
   end
-  def critical_failure_from_missing_nodes(xml_doc, expected_nodes)
-    critical "Wrong number of nodes, was #{get_members(xml_doc).count} should be exactly #{expected_nodes}"
+  def critical_missing_nodes(xml_doc, expected_nodes)
+    critical "Wrong number of nodes, was #{get_members(xml_doc).count} should be #{expected_nodes}"
   end
-  def critical_failure_from_dead_nodes(xml_doc, expected_nodes)
+  def critical_dead_nodes(xml_doc, expected_nodes)
     critical "Only #{get_is_alive_nodes(xml_doc).count { |node| node_is_alive? node}} alive nodes, should be #{expected_nodes} alive"
   end
-  def critical_failure_from_incorrect_master_count(xml_doc)
-    critical "Wrong number of node masters, there should be exactly 1 but there were #{get_masters(xml_doc)} masters"
+  def critical_master_count(xml_doc)
+    critical "Wrong number of node masters, there should be 1 but there were #{get_master_count(xml_doc)} masters"
+  end
+  def warn_nodes_not_ready(xml_doc)
+    states = get_states xml_doc
+    states = states.find { |node| node.content != "Master" and node.content != "Slave"}
+    warn "nodes found with states: #{states} when expected Master or Slave."
   end
 
   def node_is_alive?(node)
     node.content == 'true'
-  end
-
-  def print_all(collection, type)
-    puts "\nprinting #{type} collection"
-    collection.each { |item| p item }
   end
 
   def get_event_store_ips_from_dns(dns_name)
@@ -180,5 +163,33 @@ class CheckGossip < Sensu::Plugin::Check::CLI
                           .select {|info| not loopback_regex.match(info)}
 
     potential_ips.select { |info| ipv4_regex.match(info)}
+  end
+
+  def check_node(gossip_address, gossip_port, expected_nodes)
+    puts "\nchecking gossip at #{gossip_address}:#{gossip_port}"
+
+    begin
+      connection_url = "http://#{gossip_address}:#{gossip_port}/gossip?format=xml"
+      gossip = open(connection_url)
+
+    rescue StandardError
+      critical "Could not connect to #{connection_url} to check gossip, has event store fallen over on this node? "
+    end
+
+    xml_doc = Nokogiri::XML(gossip.readline)
+
+    puts "Checking for #{expected_nodes} nodes"
+    critical_missing_nodes xml_doc, expected_nodes unless node_count_is_correct? xml_doc, expected_nodes
+
+    puts "Checking nodes for IsAlive state"
+    critical_dead_nodes xml_doc, expected_nodes unless nodes_all_alive? xml_doc
+
+    puts "Checking for exactly 1 master"
+    critical_master_count xml_doc unless only_one_master? xml_doc
+
+    puts "Checking node state"
+    warn_nodes_not_ready xml_doc unless all_nodes_master_or_slave? xml_doc
+
+    ok "#{gossip_address} is gossiping with #{expected_nodes} nodes, all nodes are alive, exactly one master node was found and all other nodes are in the 'Slave' state."
   end
 end
