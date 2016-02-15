@@ -73,6 +73,7 @@ class CheckGossip < Sensu::Plugin::Check::CLI
 
       current_machine_ips = get_current_machine_ipv4s
       event_store_ips = get_event_store_ips_from_dns cluster_dns
+      critical_failure_from_no_event_store_ips cluster_dns unless event_store_ips.any?
       gossip_address = get_matching_ips current_machine_ips, event_store_ips
       expected_nodes = event_store_ips.count
     end
@@ -84,7 +85,7 @@ class CheckGossip < Sensu::Plugin::Check::CLI
     matched_ips = machine_ips.select do |ip_to_look_for|
       event_store_ips.find { |ip_to_match| ip_to_look_for == ip_to_match }
     end
-    critical "#{matched_ips.count} ips were found for this machine in the event store dns lookup, cannot figure out where to check gossip from" unless matched_ips.one?
+    critical_failure_from_no_matching_ips machine_ips, event_store_ips unless matched_ips.one?
     matched_ips[0]
   end
 
@@ -122,30 +123,36 @@ class CheckGossip < Sensu::Plugin::Check::CLI
       gossip = open(connection_url)
 
     rescue StandardError
-      critical "Could not connect to #{connection_url} to check gossip, event store has likely fallen over on this node"
+      critical "Could not connect to #{connection_url} to check gossip, has event store fallen over on this node? "
     end
 
     xml_doc = Nokogiri::XML(gossip.readline)
 
     puts "Checking for #{expected_nodes} nodes"
-    CriticalFailureFromMissingNodes xml_doc, expected_nodes unless node_count_is_correct? xml_doc, expected_nodes
+    critical_failure_from_missing_nodes xml_doc, expected_nodes unless node_count_is_correct? xml_doc, expected_nodes
 
     puts "Checking nodes for IsAlive state"
-    CriticalFailureFromNotAliveNodes xml_doc, expected_nodes unless nodes_all_alive? xml_doc
+    critical_failure_from_dead_nodes xml_doc, expected_nodes unless nodes_all_alive? xml_doc
 
     puts "Checking for exactly 1 master"
-    CriticalFailureFromIncorrectMasterCount xml_doc unless only_one_master? xml_doc
+    critical_failure_from_incorrect_master_count xml_doc unless only_one_master? xml_doc
 
     ok "#{gossip_address} is gossiping with #{expected_nodes} nodes. All nodes are marked as alive and one master node was found."
   end
 
-  def CriticalFailureFromMissingNodes(xml_doc, expected_nodes)
+  def critical_failure_from_no_matching_ips(machine_ips, event_store_ips)
+    critical "this machine has ips of #{machine_ips}, event store (according to dns lookup) has ips of #{event_store_ips}. There should be exactly one match, but wasn't. "
+  end
+  def critical_failure_from_no_event_store_ips(dns_name)
+    critical "could not find any ips at dns name #{dns_name} so cannot check gossips"
+  end
+  def critical_failure_from_missing_nodes(xml_doc, expected_nodes)
     critical "Wrong number of nodes, was #{get_members(xml_doc).count} should be exactly #{expected_nodes}"
   end
-  def CriticalFailureFromNotAliveNodes(xml_doc, expected_nodes)
+  def critical_failure_from_dead_nodes(xml_doc, expected_nodes)
     critical "Only #{get_is_alive_nodes(xml_doc).count { |node| node_is_alive? node}} alive nodes, should be #{expected_nodes} alive"
   end
-  def CriticalFailureFromIncorrectMasterCount(xml_doc)
+  def critical_failure_from_incorrect_master_count(xml_doc)
     critical "Wrong number of node masters, there should be exactly 1 but there were #{get_masters(xml_doc)} masters"
   end
 
