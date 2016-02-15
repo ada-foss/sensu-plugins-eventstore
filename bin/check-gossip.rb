@@ -111,25 +111,46 @@ class CheckGossip < Sensu::Plugin::Check::CLI
 
   def nodes_all_alive?(document)
     nodes = get_is_alive_nodes document
-    nodes.all? { |node| node.content == 'true' }
+    nodes.all? { |node| node_is_alive? node }
   end
 
   def check_node(gossip_address, gossip_port, expected_nodes)
     puts "\nchecking gossip at #{gossip_address}:#{gossip_port}"
-    gossip = open("http://#{gossip_address}:#{gossip_port}/gossip?format=xml")
+
+    begin
+      connection_url = "http://#{gossip_address}:#{gossip_port}/gossip?format=xml";
+      gossip = open(connection_url)
+
+    rescue StandardError
+      critical "Could not connect to #{connection_url} to check gossip, event store has likely fallen over on this node"
+    end
 
     xml_doc = Nokogiri::XML(gossip.readline)
 
-    puts "\tchecking for #{expected_nodes} nodes"
-    critical "\twrong number of nodes, was #{get_members(xml_doc).count} should be exactly #{expected_nodes}" unless node_count_is_correct? xml_doc, expected_nodes
+    puts "Checking for #{expected_nodes} nodes"
+    CriticalFailureFromMissingNodes xml_doc, expected_nodes unless node_count_is_correct? xml_doc, expected_nodes
 
-    puts "\tchecking nodes for IsAlive state"
-    critical "\tat least 1 node is not alive" unless nodes_all_alive? xml_doc
+    puts "Checking nodes for IsAlive state"
+    CriticalFailureFromNotAliveNodes xml_doc, expected_nodes unless nodes_all_alive? xml_doc
 
-    puts "\tchecking for exactly 1 master"
-    critical "\twrong number of node masters, there should be exactly 1" unless only_one_master? xml_doc
+    puts "Checking for exactly 1 master"
+    CriticalFailureFromIncorrectMasterCount xml_doc unless only_one_master? xml_doc
 
-    ok "Gossiping with #{expected_nodes} nodes, all of which alive and with one master node."
+    ok "#{gossip_address} is gossiping with #{expected_nodes} nodes. All nodes are marked as alive and one master node was found."
+  end
+
+  def CriticalFailureFromMissingNodes(xml_doc, expected_nodes)
+    critical "Wrong number of nodes, was #{get_members(xml_doc).count} should be exactly #{expected_nodes}"
+  end
+  def CriticalFailureFromNotAliveNodes(xml_doc, expected_nodes)
+    critical "Only #{get_is_alive_nodes(xml_doc).count { |node| node_is_alive? node}} alive nodes, should be #{expected_nodes} alive"
+  end
+  def CriticalFailureFromIncorrectMasterCount(xml_doc)
+    critical "Wrong number of node masters, there should be exactly 1 but there were #{get_masters(xml_doc)} masters"
+  end
+
+  def node_is_alive?(node)
+    node.content == 'true'
   end
 
   def print_all(collection, type)
