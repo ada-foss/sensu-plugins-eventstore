@@ -39,52 +39,68 @@ class MetricsStats < Sensu::Plugin::Check::CLI
     stat_name_mappings.each {|stat_mapping| add_metric json_stats, stats_dict, stat_mapping}
   end
 
-  def create_stat_mapping(source_name, new_suffix)
-    prefix = "eventstore"
-
+  def create_metric_mapping(source_name, target_name)
     {
       source_name: source_name,
-      target_name:"#{prefix}.#{new_suffix}"
+      target_name:"eventstore.#{target_name}"
     }
   end
 
   def add_standard_stats(json_stats, stats_dict)
     name_mappings = [
-        create_stat_mapping("proc-mem", "memory"),
-        create_stat_mapping("proc-cpu", "cpu"),
-        create_stat_mapping("proc-threadsCount", "threadsCount"),
-        create_stat_mapping("proc-contentionsRate", "contentionsRate"),
-        create_stat_mapping("proc-thrownExceptionsRate", "thrownExceptionsRate"),
-        create_stat_mapping("proc-diskIo-readBytes", "diskIo.readBytes"),
-        create_stat_mapping("proc-diskIo-writtenBytes", "diskIo.writtenBytes"),
-        create_stat_mapping("proc-diskIo-readOps", "diskIo.readOps"),
-        create_stat_mapping("proc-diskIo-writeOps", "diskIo.writeOps"),
-        create_stat_mapping("proc-tcp-connection", "tcp.connection"),
-        create_stat_mapping("proc-tcp-receivingSpeed", "tcp.receivingSpeed"),
-        create_stat_mapping("proc-tcp-sendingSpeed", "tcp.sendingSpeed"),
-        create_stat_mapping("proc-tcp-inSend", "tcp.inSend"),
-        create_stat_mapping("proc-tcp-measureTime", "tcp.measureTime"),
-        create_stat_mapping("proc-tcp-receivedBytesSinceLastRun", "tcp.receivedBytesSinceLastRun"),
-        create_stat_mapping("proc-tcp-sentBytesSinceLastRun", "tcp.sentBytesSinceLastRun"),
-        create_stat_mapping("proc-gc-gen0Size", "gc.gen0Size"),
-        create_stat_mapping("proc-gc-gen1Size", "gc.gen1Size"),
-        create_stat_mapping("proc-gc-gen2Size", "gc.gen2Size"),
-        create_stat_mapping("proc-gc-largeHeapSize", "gc.largeHeapSize"),
-        create_stat_mapping("proc-gc-totalBytesInHeaps", "gc.totalBytesInHeaps")
+        create_metric_mapping("proc-mem", "memory"),
+        create_metric_mapping("proc-cpu", "cpu"),
+        create_metric_mapping("proc-threadsCount", "threadsCount"),
+        create_metric_mapping("proc-contentionsRate", "contentionsRate"),
+        create_metric_mapping("proc-thrownExceptionsRate", "thrownExceptionsRate"),
+        create_metric_mapping("proc-diskIo-readBytes", "diskIo.readBytes"),
+        create_metric_mapping("proc-diskIo-writtenBytes", "diskIo.writtenBytes"),
+        create_metric_mapping("proc-diskIo-readOps", "diskIo.readOps"),
+        create_metric_mapping("proc-diskIo-writeOps", "diskIo.writeOps"),
+        create_metric_mapping("proc-tcp-receivingSpeed", "tcp.receivingSpeed"),
+        create_metric_mapping("proc-tcp-sendingSpeed", "tcp.sendingSpeed"),
+        create_metric_mapping("proc-tcp-inSend", "tcp.inSend"),
+        create_metric_mapping("proc-tcp-measureTime", "tcp.measureTime"),
+        create_metric_mapping("proc-tcp-receivedBytesSinceLastRun", "tcp.receivedBytesSinceLastRun"),
+        create_metric_mapping("proc-tcp-sentBytesSinceLastRun", "tcp.sentBytesSinceLastRun"),
+        create_metric_mapping("proc-gc-gen0Size", "gc.gen0Size"),
+        create_metric_mapping("proc-gc-gen1Size", "gc.gen1Size"),
+        create_metric_mapping("proc-gc-gen2Size", "gc.gen2Size"),
+        create_metric_mapping("proc-gc-largeHeapSize", "gc.largeHeapSize"),
+        create_metric_mapping("proc-gc-totalBytesInHeaps", "gc.totalBytesInHeaps")
     ]
 
     add_metrics json_stats, stats_dict, name_mappings
   end
 
+  def add_metrics_from_queue(queue, json_stats, stats_dict)
+    queue_name = queue[0]
+
+    metric_mappings = queue[1].map { |metric_name| create_metric_mapping "es-queue-#{queue_name}-#{metric_name}", "#{cleaned_name queue_name}.#{metric_name}" }
+
+    metric_mappings.each {|mapping| add_metric json_stats, stats_dict, mapping}
+  end
+
   def add_queue_stats(json_stats, stats_dict)
+    metrics_wanted = ["avgItemsPerSecond", "avgProcessingTime", "currentIdleTime", "idleTimePercent", "length", "lengthCurrentTryPeak", "lengthLifetimePeak", "totalItemsProcessed"]
+
+    split_on_queues = json_stats.keys
+                          .select { |key| key.start_with? "es-queue-" }
+                          .map { |key| key.split '-' }
+                          .select { |split_key| metrics_wanted.any? { |metric| metric == split_key[3] } }
+                          .group_by { |split_key| split_key[2] }
 
 
-    #"es-queue-{queueName}-queueName": "Master Replication Service",
-    #"es-queue-{queueName}-groupName": "",
-    #"es-queue-{queueName}-avgItemsPerSecond": 0,
-    #"es-queue-{queueName}-avgProcessingTime": 0.0,
-    #"es-queue-{queueName}-idleTimePercent": 98.433272489548671,
-    #"es-queue-{queueName}-totalItemsProcessed": 0
+
+    queue_metrics = split_on_queues.map { |queue_with_metrics| [queue_with_metrics[0], queue_with_metrics[1].map { |metrics| metrics[3] }]}
+
+    queue_metrics.each { |queue| add_metrics_from_queue queue, json_stats, stats_dict }
+  end
+
+
+  def cleaned_name(queue_name)
+    character_regex = /[^A-Za-z0-9]+|es-queue/
+    queue_name.gsub character_regex, ''
   end
 
   def run
@@ -95,7 +111,6 @@ class MetricsStats < Sensu::Plugin::Check::CLI
     add_standard_stats stats, stats_dict
 
     add_queue_stats stats, stats_dict
-
 
     puts stats_dict
   end
