@@ -14,9 +14,6 @@
 #   gem: sensu-plugin
 #   gem: nokogiri
 #
-# USAGE:
-#   #YELLOW
-#
 # NOTES:
 #
 # LICENSE:
@@ -55,10 +52,10 @@ class CheckGossip < Sensu::Plugin::Check::CLI
          default: '2113'
 
   option :expected_nodes,
-         description: 'The total number of nodes we expect to be gossiping, including this one. (Default 2)',
+         description: 'The total number of nodes we expect to be gossiping, including this one. (Default 4)',
          short: '-e',
          long: '--expected_nodes expected_nodes',
-         default: '2'
+         default: '4'
 
   def run
     discover_via_dns = config[:discover_via_dns]
@@ -140,7 +137,6 @@ class CheckGossip < Sensu::Plugin::Check::CLI
     begin
       connection_url = "http://#{gossip_address}:#{gossip_port}/gossip?format=xml"
       gossip = open(connection_url)
-
     rescue StandardError
       critical "Could not connect to #{connection_url} to check gossip, has event store fallen over on this node? "
     end
