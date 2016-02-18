@@ -142,6 +142,7 @@ class CheckGossip < Sensu::Plugin::Check::CLI
     states = get_states xml_doc
     states = states.find { |node| node.content != "Master" and node.content != "Slave"}
     warn "nodes found with states: #{states} when expected Master or Slave."
+    exit 1
   end
 
   def node_is_alive?(node)
