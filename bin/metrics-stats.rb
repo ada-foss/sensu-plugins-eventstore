@@ -79,12 +79,12 @@ class MetricsStats < Sensu::Plugin::Check::CLI
   def add_queue_stats(json_stats, stats_dict)
 
 
-    "es-queue-{queueName}-queueName": "Master Replication Service",
-    "es-queue-{queueName}-groupName": "",
-    "es-queue-{queueName}-avgItemsPerSecond": 0,
-    "es-queue-{queueName}-avgProcessingTime": 0.0,
-    "es-queue-{queueName}-idleTimePercent": 98.433272489548671,
-    "es-queue-{queueName}-totalItemsProcessed": 0
+    #"es-queue-{queueName}-queueName": "Master Replication Service",
+    #"es-queue-{queueName}-groupName": "",
+    #"es-queue-{queueName}-avgItemsPerSecond": 0,
+    #"es-queue-{queueName}-avgProcessingTime": 0.0,
+    #"es-queue-{queueName}-idleTimePercent": 98.433272489548671,
+    #"es-queue-{queueName}-totalItemsProcessed": 0
   end
 
   def run
