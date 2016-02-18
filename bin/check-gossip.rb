@@ -26,9 +26,6 @@
 
 require 'nokogiri'
 require '../lib/ip-helper.rb'
-require 'open-uri'
-require 'socket'
-require 'resolv'
 require 'sensu-plugin/check/cli'
 
 

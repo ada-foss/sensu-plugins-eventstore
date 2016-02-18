@@ -111,8 +111,6 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
     add_queue_stats stats, stats_dict
 
-    #puts stats_dict
-
     stats_dict.each { |stat| output stat[0], stat[1]}
 
     ok
