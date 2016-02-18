@@ -21,14 +21,13 @@
 #   for details.
 #
 
-require 'nokogiri'
+
+
 require 'open-uri'
-require 'socket'
-require 'resolv'
-require 'sensu-plugin/check/cli'
+require 'sensu-plugin/metric/cli'
 require 'json'
 
-class MetricsStats < Sensu::Plugin::Check::CLI
+class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
   def add_metric(json_stats, stats_dict, stat_name_mapping)
     stat_value = json_stats[stat_name_mapping[:source_name]]
@@ -112,7 +111,10 @@ class MetricsStats < Sensu::Plugin::Check::CLI
 
     add_queue_stats stats, stats_dict
 
-    puts stats_dict
-  end
+    #puts stats_dict
 
+    stats_dict.each { |stat| output stat[0], stat[1]}
+
+    ok
+  end
 end
