@@ -21,6 +21,7 @@
 #   for details.
 #
 
+require 'nokogiri'
 require 'sensu-plugin/metric/cli'
 require '../lib/ip-helper.rb'
 require 'json'
@@ -68,16 +69,33 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   end
 
   def collect_metrics(address, port)
-    connection_url = "http://#{address}:#{port}/streams/$stats-#{address}:#{port}"
+    #connection_url = "http://#{address}:#{port}/streams/$stats-#{address}:#{port}"
+    stream_url = "http://127.0.0.1:5113/streams/$stats-127.0.0.1:5114"
+    result = open stream_url, http_basic_authentication: ["admin", "changeit"],  "Accept" => "application/atom+xml"
 
-    puts open(connection_url)
+    namespace_regex = / xmlns="[A-Za-z:\/.0-9]+"/
+
+    #if we don't remove the namespace nokogiri parsing fails
+    without_namespace = result.readline.sub namespace_regex, ''
 
 
-    #xml_doc = Nokogiri::XML(page)
-    #stats_dict = Hash.new
-    #add_standard_stats stats, stats_dict
-    #add_queue_stats stats, stats_dict
-    ##stats_dict.each { |stat| output stat[0], stat[1]}
+    xml_doc = Nokogiri::XML(without_namespace)
+
+    puts xml_doc
+
+    latest_entry = xml_doc.xpath('.//entry')
+                       .sort  { |node| DateTime.parse node.xpath('.//updated').text }
+                       .last
+
+    event_number_regex = /[0-9]+$/
+    event_number = event_number_regex.match latest_entry.at_xpath('.//id').content
+
+    latest_event_url = "#{stream_url}/#{event_number.to_s.to_i}"
+
+    stream = open latest_event_url, http_basic_authentication: ["admin", "changeit"], "Accept" => "application/atom+xml"
+    puts stream.status
+    p stream.readline
+    
     ok
   end
 
@@ -141,8 +159,6 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
                           .map { |key| key.split '-' }
                           .select { |split_key| metrics_wanted.any? { |metric| metric == split_key[3] } }
                           .group_by { |split_key| split_key[2] }
-
-
 
     queue_metrics = split_on_queues.map { |queue_with_metrics| [queue_with_metrics[0], queue_with_metrics[1].map { |metrics| metrics[3] }]}
 
