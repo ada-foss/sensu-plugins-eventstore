@@ -65,21 +65,28 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
       critical address unless helper.is_valid_v4_ip address
     end
 
+    force_downloaded_files_to_be_temp_files
     collect_metrics address, port
+  end
+
+  def force_downloaded_files_to_be_temp_files
+    # Don't allow downloaded files to be created as StringIO. Force a tempfile to be created.
+    OpenURI::Buffer.send :remove_const, 'StringMax' if OpenURI::Buffer.const_defined?('StringMax')
+    OpenURI::Buffer.const_set 'StringMax', -1
   end
 
   def collect_metrics(address, port)
     #connection_url = "http://#{address}:#{port}/streams/$stats-#{address}:#{port}"
-    stream_url = "http://127.0.0.1:5113/streams/$stats-127.0.0.1:5114"
-    result = open stream_url, http_basic_authentication: ["admin", "changeit"],  "Accept" => "application/atom+xml"
+    stream_url = "http://127.0.0.1:5114/streams/$stats-127.0.0.1:5114"
+
+    stream_temp_file = open stream_url, http_basic_authentication: ["admin", "changeit"],  "Accept" => "application/atom+xml"
 
     namespace_regex = / xmlns="[A-Za-z:\/.0-9]+"/
 
     #if we don't remove the namespace nokogiri parsing fails
-    without_namespace = result.readline.sub namespace_regex, ''
+    xml_stream_without_namespace = stream_temp_file.read.sub namespace_regex, ''
 
-
-    xml_doc = Nokogiri::XML(without_namespace)
+    xml_doc = Nokogiri::XML xml_stream_without_namespace
 
     puts xml_doc
 
@@ -92,10 +99,11 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
     latest_event_url = "#{stream_url}/#{event_number.to_s.to_i}"
 
-    stream = open latest_event_url, http_basic_authentication: ["admin", "changeit"], "Accept" => "application/atom+xml"
-    puts stream.status
-    p stream.readline
-    
+    element_temp_file = open latest_event_url, http_basic_authentication: ["admin", "changeit"],  "Accept" => "application/json"
+    json_stats = element_temp_file.read
+
+
+
     ok
   end
 
@@ -116,7 +124,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
     }
   end
 
-  def add_standard_stats(json_stats, stats_dict)
+  def parse_json_stats(json_stats)
     name_mappings = [
         create_metric_mapping("proc-mem", "memory"),
         create_metric_mapping("proc-cpu", "cpu"),
