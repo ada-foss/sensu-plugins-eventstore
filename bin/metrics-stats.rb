@@ -76,8 +76,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   end
 
   def collect_metrics(address, port)
-    #connection_url = "http://#{address}:#{port}/streams/$stats-#{address}:#{port}"
-    stream_url = "http://127.0.0.1:5114/streams/$stats-127.0.0.1:5114"
+    stream_url = "http://#{address}:#{port}/streams/$stats-#{address}:#{port}"
 
     stream_temp_file = open stream_url, http_basic_authentication: ["admin", "changeit"],  "Accept" => "application/atom+xml"
 
