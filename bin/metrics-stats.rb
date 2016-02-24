@@ -78,7 +78,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   def collect_metrics(address, port)
     stream_url = "http://#{address}:#{port}/streams/$stats-#{address}:#{port}"
 
-    stream_temp_file = open stream_url, http_basic_authentication: ["admin", "changeit"],  "Accept" => "application/atom+xml"
+    stream_temp_file = open stream_url, "Accept" => "application/atom+xml"
 
     namespace_regex = / xmlns="[A-Za-z:\/.0-9]+"/
 
@@ -98,7 +98,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
     latest_event_url = "#{stream_url}/#{event_number.to_s.to_i}"
 
-    element_temp_file = open latest_event_url, http_basic_authentication: ["admin", "changeit"],  "Accept" => "application/json"
+    element_temp_file = open latest_event_url,  "Accept" => "application/json"
     json_stats = element_temp_file.read
 
     stats_dict = parse_json_stats json_stats
