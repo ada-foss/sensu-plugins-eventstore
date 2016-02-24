@@ -102,18 +102,19 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
     element_temp_file = open latest_event_url, http_basic_authentication: ["admin", "changeit"],  "Accept" => "application/json"
     json_stats = element_temp_file.read
 
+    stats_dict = parse_json_stats json_stats
 
+    stats_dict.each { |stat| output stat[0], stat[1]}
 
     ok
   end
-
 
   def add_metric(json_stats, stats_dict, stat_name_mapping)
     stat_value = json_stats[stat_name_mapping[:source_name]]
     stats_dict[stat_name_mapping[:target_name]] = stat_value
   end
 
-  def add_metrics(json_stats, stats_dict, stat_name_mappings)
+  def add_standard_metrics(json_stats, stats_dict, stat_name_mappings)
     stat_name_mappings.each {|stat_mapping| add_metric json_stats, stats_dict, stat_mapping}
   end
 
@@ -147,19 +148,13 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
         create_metric_mapping("proc-gc-largeHeapSize", "gc.largeHeapSize"),
         create_metric_mapping("proc-gc-totalBytesInHeaps", "gc.totalBytesInHeaps")
     ]
-
-    add_metrics json_stats, stats_dict, name_mappings
+    stats_dict = Hash.new
+    add_standard_metrics json_stats, stats_dict, name_mappings
+    add_metrics_for_queues json_stats, stats_dict
+    return stats_dict
   end
 
-  def add_metrics_from_queue(queue, json_stats, stats_dict)
-    queue_name = queue[0]
-
-    metric_mappings = queue[1].map { |metric_name| create_metric_mapping "es-queue-#{queue_name}-#{metric_name}", "#{cleaned_name queue_name}.#{metric_name}" }
-
-    metric_mappings.each {|mapping| add_metric json_stats, stats_dict, mapping}
-  end
-
-  def add_queue_stats(json_stats, stats_dict)
+  def add_metrics_for_queues(json_stats, stats_dict)
     metrics_wanted = %w(avgItemsPerSecond avgProcessingTime currentIdleTime idleTimePercent length lengthCurrentTryPeak lengthLifetimePeak totalItemsProcessed)
 
     split_on_queues = json_stats.keys
@@ -170,9 +165,16 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
     queue_metrics = split_on_queues.map { |queue_with_metrics| [queue_with_metrics[0], queue_with_metrics[1].map { |metrics| metrics[3] }]}
 
-    queue_metrics.each { |queue| add_metrics_from_queue queue, json_stats, stats_dict }
+    queue_metrics.each { |queue| add_metrics_for_queue queue, json_stats, stats_dict }
   end
 
+  def add_metrics_for_queue(queue, json_stats, stats_dict)
+    queue_name = queue[0]
+
+    metric_mappings = queue[1].map { |metric_name| create_metric_mapping "es-queue-#{queue_name}-#{metric_name}", "#{cleaned_name queue_name}.#{metric_name}" }
+
+    metric_mappings.each {|mapping| add_metric json_stats, stats_dict, mapping}
+  end
 
   def cleaned_name(queue_name)
     character_regex = /[^A-Za-z0-9]+|es-queue/
