@@ -99,7 +99,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
     latest_event_url = "#{stream_url}/#{event_number.to_s.to_i}"
 
     element_temp_file = open latest_event_url,  "Accept" => "application/json"
-    json_stats = element_temp_file.read
+    json_stats = JSON.parse element_temp_file.read
 
     stats_dict = parse_json_stats json_stats
 
