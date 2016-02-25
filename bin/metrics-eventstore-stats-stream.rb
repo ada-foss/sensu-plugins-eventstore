@@ -152,7 +152,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   def create_metric_mapping(source_name, target_name)
     {
       source_name: source_name,
-      target_name:"eventstore.#{target_name}"
+      target_name:"#{Socket.gethostname}.eventstore.#{target_name}"
     }
   end
 
