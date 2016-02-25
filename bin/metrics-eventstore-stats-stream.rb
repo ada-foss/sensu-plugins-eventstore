@@ -134,7 +134,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
     if "true".casecmp(use_auth) == 0
       username = config[:auth_user]
       password = config[:auth_password]
-      return open stream_url, http_basic_authentication:[username, password], "Accept" => "application/atom+xml"
+      return open stream_url, http_basic_authentication:[username, password], "Accept" => accept_type
     else
       return open stream_url, "Accept" => accept_type
     end
