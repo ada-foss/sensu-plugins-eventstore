@@ -53,19 +53,19 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
   option :use_authentication,
          description: 'Should use authentication (Default false)',
-         short: '-ua',
-         long: '--auth auth',
+         short: '-u',
+         long: '--use_authentication use_authentication',
          default: 'false'
 
   option :auth_user,
          description: 'Username for stats stream auth. (Default "admin")',
-         short: '-usr',
+         short: '-r',
          long: '--auth_user auth_user',
          default: 'admin'
 
   option :auth_password,
          description: 'What port to use. (Default "changeit")',
-         short: '-pwd',
+         short: '-w',
          long: '--auth_password auth_password',
          default: 'changeit'
 
@@ -114,7 +114,10 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
     latest_event_url = latest_entry.at_xpath('.//id').content
 
     element_temp_file = get_stream latest_event_url, "application/json"
+
     json_stats = JSON.parse element_temp_file.read
+
+    puts "json stats #{json_stats}"
 
     stats_dict = parse_json_stats json_stats
 
