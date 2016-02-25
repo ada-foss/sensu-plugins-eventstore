@@ -23,16 +23,16 @@ class IpHelper
     /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.match potential_ip
   end
 
-  private def get_current_machine_ipv4s
+  def get_current_machine_ipv4s
     loopback_regex = /^localhost$|^127(?:\.[0-9]+){0,2}\.[0-9]+$|^(?:0*\:)*?:?0*1$/
 
     potential_ips = Socket.ip_address_list.map{|info| info.ip_address}
-                        .select {|info| not loopback_regex.match(info)}
+                          .select {|info| not loopback_regex.match(info)}
 
     potential_ips.select { |info| is_valid_v4_ip info}
   end
 
-  private def get_matching_ips(machine_ips, event_store_ips)
+  def get_matching_ips(machine_ips, event_store_ips)
     matched_ips = machine_ips.select do |ip_to_look_for|
       event_store_ips.find { |ip_to_match| ip_to_look_for == ip_to_match }
     end
@@ -41,18 +41,18 @@ class IpHelper
     matched_ips[0]
   end
 
-  private def get_event_store_ips_from_dns(dns_name)
+  def get_event_store_ips_from_dns(dns_name)
     Resolv::DNS.open { |dns|
       resources = dns.getresources dns_name, Resolv::DNS::Resource::IN::A
       resources.map { |res| res.address.to_s }
     }
   end
 
-  private def no_matching_ip_error(machine_ips, event_store_ips)
+  def no_matching_ip_error(machine_ips, event_store_ips)
     "this machine has ips of #{machine_ips}, event store (according to dns lookup) has ips of #{event_store_ips}. There should be exactly one match, but wasn't. "
   end
 
-  private def no_event_store_ips_error(dns_name)
+  def no_event_store_ips_error(dns_name)
     "could not find any ips at dns name #{dns_name} so cannot check gossips"
   end
 end
