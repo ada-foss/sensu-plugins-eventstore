@@ -51,6 +51,24 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
          long: '--port port',
          default: '2114'
 
+  option :use_authentication,
+         description: 'Should use authentication (Default false)',
+         short: '-ua',
+         long: '--auth auth',
+         default: 'false'
+
+  option :auth_user,
+         description: 'Username for stats stream auth. (Default "admin")',
+         short: '-usr',
+         long: '--auth_user auth_user',
+         default: 'admin'
+
+  option :auth_password,
+         description: 'What port to use. (Default "changeit")',
+         short: '-pwd',
+         long: '--auth_password auth_password',
+         default: 'changeit'
+
   def run
     discover_via_dns = config[:discover_via_dns]
     address = config[:address]
@@ -78,12 +96,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   def collect_metrics(address, port)
     stream_url = "http://#{address}:#{port}/streams/$stats-#{address}:#{port}"
 
-    puts "attempting to open #{stream_url}"
-    stream_temp_file = open stream_url, "Accept" => "application/atom+xml"
-
-    puts "open result:: temp file found? "
-
-    p stream_temp_file
+    stream_temp_file = get_stream stream_url
 
     namespace_regex = / xmlns="[A-Za-z:\/.0-9]+"/
 
@@ -98,12 +111,9 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
                        .sort  { |node| DateTime.parse node.xpath('.//updated').text }
                        .last
 
-    event_number_regex = /[0-9]+$/
-    event_number = event_number_regex.match latest_entry.at_xpath('.//id').content
+    latest_event_url = latest_entry.at_xpath('.//id').content
 
-    latest_event_url = "#{stream_url}/#{event_number.to_s.to_i}"
-
-    element_temp_file = open latest_event_url,  "Accept" => "application/json"
+    element_temp_file = get_stream latest_event_url
     json_stats = JSON.parse element_temp_file.read
 
     stats_dict = parse_json_stats json_stats
@@ -111,6 +121,20 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
     stats_dict.each { |stat| output stat[0], stat[1]}
 
     ok
+  end
+
+  def get_stream(stream_url)
+    puts "opening stream @ url #{stream_url}"
+
+    use_auth = config[:use_authentication]
+
+    if "true".casecmp(use_auth) == 0
+      username = config[:auth_user]
+      password = config[:auth_password]
+      return open stream_url, http_basic_authentication:[username, password], "Accept" => "application/atom+xml"
+    else
+      return open stream_url, "Accept" => "application/atom+xml"
+    end
   end
 
   def add_metric(json_stats, stats_dict, stat_name_mapping)
