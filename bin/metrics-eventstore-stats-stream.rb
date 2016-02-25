@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 #
-#   check-gossip
+#   Stats
 #
 # DESCRIPTION:
 #    Metrics for the event store stats
@@ -46,10 +46,10 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
          default: 'localhost'
 
   option :port,
-         description: 'What port to use. (Default 2113)',
+         description: 'What port to use. (Default 2114)',
          short: '-p',
          long: '--port port',
-         default: '2113'
+         default: '2114'
 
   def run
     discover_via_dns = config[:discover_via_dns]
