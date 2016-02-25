@@ -29,7 +29,7 @@ require 'json'
 class Stats < Sensu::Plugin::Metric::CLI::Graphite
   option :discover_via_dns,
          description: 'Whether to use DNS lookup to discover other cluster nodes. (Default: true)',
-         short: '-v',
+         short: '-k',
          long: '--discover_via_dns discover_via_dns',
          default: 'true'
 
@@ -69,6 +69,18 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
          long: '--auth_password auth_password',
          default: 'changeit'
 
+  option :scheme,
+         description: 'What to prepend to output metrics (Default "<hostname>.eventstore")',
+         short: '-s',
+         long: '--scheme scheme',
+         default: "#{Socket.gethostname}.eventstore"
+
+  option :verbose,
+           description: 'output extra messaging (Default false)',
+           short: '-v',
+           long: '--verbose verbose',
+           default: 'false'
+
   def run
     discover_via_dns = config[:discover_via_dns]
     address = config[:address]
@@ -105,7 +117,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
     xml_doc = Nokogiri::XML xml_stream_without_namespace
 
-    puts xml_doc
+    puts xml_doc  if config_is_true config[:verbose]
 
     latest_entry = xml_doc.xpath('.//entry')
                        .sort  { |node| DateTime.parse node.xpath('.//updated').text }
@@ -117,27 +129,29 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
     json_stats = JSON.parse element_temp_file.read
 
-    puts "json stats #{json_stats}"
+    puts "json stats #{json_stats}"  if config_is_true config[:verbose]
 
     stats_dict = parse_json_stats json_stats
 
     stats_dict.each { |stat| output stat[0], stat[1]}
 
-    ok
+    ok "metrics collected successfully"
   end
 
   def get_stream(stream_url, accept_type)
-    puts "opening stream @ url #{stream_url}"
+    puts "opening stream @ url #{stream_url}" if config_is_true config[:verbose]
 
-    use_auth = config[:use_authentication]
-
-    if "true".casecmp(use_auth) == 0
+    if config_is_true config[:use_authentication]
       username = config[:auth_user]
       password = config[:auth_password]
       return open stream_url, http_basic_authentication:[username, password], "Accept" => accept_type
     else
       return open stream_url, "Accept" => accept_type
     end
+  end
+
+  def config_is_true(config)
+    return "true".casecmp(config) == 0
   end
 
   def add_metric(json_stats, stats_dict, stat_name_mapping)
@@ -152,7 +166,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   def create_metric_mapping(source_name, target_name)
     {
       source_name: source_name,
-      target_name:"#{Socket.gethostname}.eventstore.#{target_name}"
+      target_name:"#{config[:scheme]}.#{target_name}"
     }
   end
 
