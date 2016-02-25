@@ -135,7 +135,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
     stats_dict.each { |stat| output stat[0], stat[1]}
 
-    ok "metrics collected successfully"
+    ok
   end
 
   def get_stream(stream_url, accept_type)
