@@ -96,7 +96,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   def collect_metrics(address, port)
     stream_url = "http://#{address}:#{port}/streams/$stats-#{address}:#{port}"
 
-    stream_temp_file = get_stream stream_url
+    stream_temp_file = get_stream stream_url, "application/atom+xml"
 
     namespace_regex = / xmlns="[A-Za-z:\/.0-9]+"/
 
@@ -113,7 +113,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
     latest_event_url = latest_entry.at_xpath('.//id').content
 
-    element_temp_file = get_stream latest_event_url
+    element_temp_file = get_stream latest_event_url, "application/json"
     json_stats = JSON.parse element_temp_file.read
 
     stats_dict = parse_json_stats json_stats
@@ -123,7 +123,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
     ok
   end
 
-  def get_stream(stream_url)
+  def get_stream(stream_url, accept_type)
     puts "opening stream @ url #{stream_url}"
 
     use_auth = config[:use_authentication]
@@ -133,7 +133,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
       password = config[:auth_password]
       return open stream_url, http_basic_authentication:[username, password], "Accept" => "application/atom+xml"
     else
-      return open stream_url, "Accept" => "application/atom+xml"
+      return open stream_url, "Accept" => accept_type
     end
   end
 
