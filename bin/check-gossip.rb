@@ -22,7 +22,7 @@
 #
 
 require 'nokogiri'
-require '../lib/ip-helper.rb'
+require 'ip-helper.rb'
 require 'sensu-plugin/check/cli'
 
 

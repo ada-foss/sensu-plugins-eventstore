@@ -23,7 +23,7 @@
 
 require 'nokogiri'
 require 'sensu-plugin/metric/cli'
-require '../lib/ip-helper.rb'
+require 'ip-helper.rb'
 require 'json'
 
 class Stats < Sensu::Plugin::Metric::CLI::Graphite
