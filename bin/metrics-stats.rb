@@ -78,7 +78,12 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   def collect_metrics(address, port)
     stream_url = "http://#{address}:#{port}/streams/$stats-#{address}:#{port}"
 
+    puts "attempting to open #{stream_url}"
     stream_temp_file = open stream_url, "Accept" => "application/atom+xml"
+
+    puts "open result:: temp file found? "
+
+    p stream_temp_file
 
     namespace_regex = / xmlns="[A-Za-z:\/.0-9]+"/
 
