@@ -21,6 +21,7 @@
 #   for details.
 #
 
+require 'date'
 require 'nokogiri'
 require 'sensu-plugin/metric/cli'
 require 'ip-helper.rb'
@@ -79,13 +80,18 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
          description: 'What to prepend to output queue metrics (Default "<cluster_dns>.eventstore")',
          short: '-q',
          long: '--queue_scheme queue_scheme',
-         default: "#{config[:cluster_dns]}.eventstore"
+         default: ""
 
   option :verbose,
            description: 'output extra messaging (Default false)',
            short: '-v',
            long: '--verbose verbose',
            default: 'false'
+
+  def get_queue_scheme
+    return config[:queue_scheme] unless config[:queue_scheme].empty?
+    "#{config[:cluster_dns]}.eventstore"
+  end
 
   def run
     discover_via_dns = config[:discover_via_dns]
@@ -123,7 +129,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
     xml_doc = Nokogiri::XML xml_stream_without_namespace
 
-    puts xml_doc  if config_is_true config[:verbose]
+    puts xml_doc if verbose?
 
     latest_entry = xml_doc.xpath('.//entry')
                        .sort  { |node| DateTime.parse node.xpath('.//updated').text }
@@ -135,7 +141,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
     json_stats = JSON.parse element_temp_file.read
 
-    puts "json stats #{json_stats}"  if config_is_true config[:verbose]
+    puts "json stats #{json_stats}" if verbose?
 
     stats_dict = add_standard_metrics json_stats
 
@@ -143,15 +149,21 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
     stat_time = latest_entry.at_xpath('.//updated').content
 
+    puts "stat retrived for time #{stat_time}" if verbose?
+
     parsed_date_time = DateTime.parse(stat_time)
 
-    stats_dict.each { |stat| output stat[0], stat[1], parsed_date_time}
+    stats_dict.each { |stat| output stat[0], stat[1], parsed_date_time.strftime('%s')}
 
     ok
   end
 
+  def verbose?
+    config_is_true config[:verbose]
+  end
+
   def get_stream(stream_url, accept_type)
-    puts "opening stream @ url #{stream_url}" if config_is_true config[:verbose]
+    puts "opening stream @ url #{stream_url}" if verbose?
 
     if config_is_true config[:use_authentication]
       username = config[:auth_user]
@@ -180,7 +192,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   def create_queue_mapping(source_name, target_name)
     {
         source_name: source_name,
-        target_name:"#{config[:queue_scheme]}.#{target_name}"
+        target_name:"#{get_queue_scheme}.#{target_name}"
     }
   end
 
