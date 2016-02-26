@@ -69,11 +69,17 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
          long: '--auth_password auth_password',
          default: 'changeit'
 
-  option :scheme,
-         description: 'What to prepend to output metrics (Default "<hostname>.eventstore")',
+  option :proc_scheme,
+         description: 'What to prepend to output proc metrics (Default "<hostname>.eventstore")',
          short: '-s',
-         long: '--scheme scheme',
+         long: '--proc_scheme proc_scheme',
          default: "#{Socket.gethostname}.eventstore"
+
+  option :queue_scheme,
+         description: 'What to prepend to output queue metrics (Default "<cluster_dns>.eventstore")',
+         short: '-q',
+         long: '--queue_scheme queue_scheme',
+         default: "#{config[:cluster_dns]}.eventstore"
 
   option :verbose,
            description: 'output extra messaging (Default false)',
@@ -95,11 +101,10 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
       critical address unless helper.is_valid_v4_ip address
     end
 
-    force_downloaded_files_to_be_temp_files
     collect_metrics address, port
   end
 
-  def force_downloaded_files_to_be_temp_files
+  def force_web_requests_to_use_temp_files
     # Don't allow downloaded files to be created as StringIO. Force a tempfile to be created.
     OpenURI::Buffer.send :remove_const, 'StringMax' if OpenURI::Buffer.const_defined?('StringMax')
     OpenURI::Buffer.const_set 'StringMax', -1
@@ -108,6 +113,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   def collect_metrics(address, port)
     stream_url = "http://#{address}:#{port}/streams/$stats-#{address}:#{port}"
 
+    force_web_requests_to_use_temp_files
     stream_temp_file = get_stream stream_url, "application/atom+xml"
 
     namespace_regex = / xmlns="[A-Za-z:\/.0-9]+"/
@@ -131,7 +137,9 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
     puts "json stats #{json_stats}"  if config_is_true config[:verbose]
 
-    stats_dict = parse_json_stats json_stats
+    stats_dict = add_standard_metrics json_stats
+
+    add_metrics_for_queues json_stats, stats_dict if are_we_master? address, port
 
     stats_dict.each { |stat| output stat[0], stat[1]}
 
@@ -144,14 +152,14 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
     if config_is_true config[:use_authentication]
       username = config[:auth_user]
       password = config[:auth_password]
-      return open stream_url, http_basic_authentication:[username, password], "Accept" => accept_type
+      open stream_url, http_basic_authentication:[username, password], "Accept" => accept_type
     else
-      return open stream_url, "Accept" => accept_type
+      open stream_url, "Accept" => accept_type
     end
   end
 
   def config_is_true(config)
-    return "true".casecmp(config) == 0
+    "true".casecmp(config) == 0
   end
 
   def add_metric(json_stats, stats_dict, stat_name_mapping)
@@ -159,44 +167,65 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
     stats_dict[stat_name_mapping[:target_name]] = stat_value
   end
 
-  def add_standard_metrics(json_stats, stats_dict, stat_name_mappings)
-    stat_name_mappings.each {|stat_mapping| add_metric json_stats, stats_dict, stat_mapping}
-  end
-
-  def create_metric_mapping(source_name, target_name)
+  def create_proc_mapping(source_name, target_name)
     {
-      source_name: source_name,
-      target_name:"#{config[:scheme]}.#{target_name}"
+        source_name: source_name,
+        target_name:"#{config[:proc_scheme]}.#{target_name}"
+    }
+  end
+  def create_queue_mapping(source_name, target_name)
+    {
+        source_name: source_name,
+        target_name:"#{config[:queue_scheme]}.#{target_name}"
     }
   end
 
-  def parse_json_stats(json_stats)
+  def add_standard_metrics(json_stats)
     name_mappings = [
-        create_metric_mapping("proc-mem", "memory"),
-        create_metric_mapping("proc-cpu", "cpu"),
-        create_metric_mapping("proc-threadsCount", "threadsCount"),
-        create_metric_mapping("proc-contentionsRate", "contentionsRate"),
-        create_metric_mapping("proc-thrownExceptionsRate", "thrownExceptionsRate"),
-        create_metric_mapping("proc-diskIo-readBytes", "diskIo.readBytes"),
-        create_metric_mapping("proc-diskIo-writtenBytes", "diskIo.writtenBytes"),
-        create_metric_mapping("proc-diskIo-readOps", "diskIo.readOps"),
-        create_metric_mapping("proc-diskIo-writeOps", "diskIo.writeOps"),
-        create_metric_mapping("proc-tcp-receivingSpeed", "tcp.receivingSpeed"),
-        create_metric_mapping("proc-tcp-sendingSpeed", "tcp.sendingSpeed"),
-        create_metric_mapping("proc-tcp-inSend", "tcp.inSend"),
-        create_metric_mapping("proc-tcp-measureTime", "tcp.measureTime"),
-        create_metric_mapping("proc-tcp-receivedBytesSinceLastRun", "tcp.receivedBytesSinceLastRun"),
-        create_metric_mapping("proc-tcp-sentBytesSinceLastRun", "tcp.sentBytesSinceLastRun"),
-        create_metric_mapping("proc-gc-gen0Size", "gc.gen0Size"),
-        create_metric_mapping("proc-gc-gen1Size", "gc.gen1Size"),
-        create_metric_mapping("proc-gc-gen2Size", "gc.gen2Size"),
-        create_metric_mapping("proc-gc-largeHeapSize", "gc.largeHeapSize"),
-        create_metric_mapping("proc-gc-totalBytesInHeaps", "gc.totalBytesInHeaps")
+        create_proc_mapping("proc-mem", "memory"),
+        create_proc_mapping("proc-cpu", "cpu"),
+        create_proc_mapping("proc-threadsCount", "threadsCount"),
+        create_proc_mapping("proc-contentionsRate", "contentionsRate"),
+        create_proc_mapping("proc-thrownExceptionsRate", "thrownExceptionsRate"),
+        create_proc_mapping("proc-diskIo-readBytes", "diskIo.readBytes"),
+        create_proc_mapping("proc-diskIo-writtenBytes", "diskIo.writtenBytes"),
+        create_proc_mapping("proc-diskIo-readOps", "diskIo.readOps"),
+        create_proc_mapping("proc-diskIo-writeOps", "diskIo.writeOps"),
+        create_proc_mapping("proc-tcp-receivingSpeed", "tcp.receivingSpeed"),
+        create_proc_mapping("proc-tcp-sendingSpeed", "tcp.sendingSpeed"),
+        create_proc_mapping("proc-tcp-inSend", "tcp.inSend"),
+        create_proc_mapping("proc-tcp-measureTime", "tcp.measureTime"),
+        create_proc_mapping("proc-tcp-receivedBytesSinceLastRun", "tcp.receivedBytesSinceLastRun"),
+        create_proc_mapping("proc-tcp-sentBytesSinceLastRun", "tcp.sentBytesSinceLastRun"),
+        create_proc_mapping("proc-gc-gen0Size", "gc.gen0Size"),
+        create_proc_mapping("proc-gc-gen1Size", "gc.gen1Size"),
+        create_proc_mapping("proc-gc-gen2Size", "gc.gen2Size"),
+        create_proc_mapping("proc-gc-largeHeapSize", "gc.largeHeapSize"),
+        create_proc_mapping("proc-gc-totalBytesInHeaps", "gc.totalBytesInHeaps")
     ]
     stats_dict = Hash.new
-    add_standard_metrics json_stats, stats_dict, name_mappings
-    add_metrics_for_queues json_stats, stats_dict
-    return stats_dict
+    name_mappings.each {|stat_mapping| add_metric json_stats, stats_dict, stat_mapping}
+
+    stats_dict
+  end
+
+  def are_we_master?(address, port)
+    begin
+      connection_url = "#{address}:#{port}/gossip?format=xml"
+      gossip = open(connection_url)
+    rescue StandardError
+      critical "Could not connect to #{connection_url} to check gossip, has event store fallen over on this node? "
+    end
+
+    xml_doc = Nokogiri::XML(gossip.readline)
+
+    members = xml_doc.xpath '//MemberInfoDto'
+
+
+    us = members.find { |member| member.xpath('.//ExternalHttpIp').content == address and
+                                  member.xpath('.//ExternalHttpPort').content == port}
+
+    us.xpath('.//state').content == 'Master'
   end
 
   def add_metrics_for_queues(json_stats, stats_dict)
@@ -216,7 +245,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   def add_metrics_for_queue(queue, json_stats, stats_dict)
     queue_name = queue[0]
 
-    metric_mappings = queue[1].map { |metric_name| create_metric_mapping "es-queue-#{queue_name}-#{metric_name}", "#{cleaned_name queue_name}.#{metric_name}" }
+    metric_mappings = queue[1].map { |metric_name| create_queue_mapping "es-queue-#{queue_name}-#{metric_name}", "#{cleaned_name queue_name}.#{metric_name}" }
 
     metric_mappings.each {|mapping| add_metric json_stats, stats_dict, mapping}
   end
