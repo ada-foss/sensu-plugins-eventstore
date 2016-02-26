@@ -141,7 +141,11 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
     add_metrics_for_queues json_stats, stats_dict if are_we_master? address, port
 
-    stats_dict.each { |stat| output stat[0], stat[1]}
+    stat_time = latest_entry.at_xpath('.//updated').content
+
+    parsed_date_time = DateTime.parse(stat_time)
+
+    stats_dict.each { |stat| output stat[0], stat[1], parsed_date_time}
 
     ok
   end
