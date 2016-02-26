@@ -145,7 +145,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
     stats_dict = add_standard_metrics json_stats
 
-    add_metrics_for_queues json_stats, stats_dict if are_we_master? address, port
+    add_metrics_for_queues json_stats, stats_dict
 
     stat_time = latest_entry.at_xpath('.//updated').content
 
@@ -223,25 +223,6 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
     name_mappings.each {|stat_mapping| add_metric json_stats, stats_dict, stat_mapping}
 
     stats_dict
-  end
-
-  def are_we_master?(address, port)
-    begin
-      connection_url = "#{address}:#{port}/gossip?format=xml"
-      gossip = open(connection_url)
-    rescue StandardError
-      critical "Could not connect to #{connection_url} to check gossip, has event store fallen over on this node? "
-    end
-
-    xml_doc = Nokogiri::XML(gossip.readline)
-
-    members = xml_doc.xpath '//MemberInfoDto'
-
-
-    us = members.find { |member| member.xpath('.//ExternalHttpIp').content == address and
-                                  member.xpath('.//ExternalHttpPort').content == port}
-
-    us.xpath('.//state').content == 'Master'
   end
 
   def add_metrics_for_queues(json_stats, stats_dict)
