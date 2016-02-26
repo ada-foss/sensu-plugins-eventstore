@@ -90,7 +90,9 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
 
   def get_queue_scheme
     return config[:queue_scheme] unless config[:queue_scheme].empty?
-    "#{config[:cluster_dns]}.eventstore"
+    #get the first part of the cluster dns
+    dns_name = /^[^.]+/.match config[:cluster_dns]
+    "#{dns_name}.eventstore"
   end
 
   def run
