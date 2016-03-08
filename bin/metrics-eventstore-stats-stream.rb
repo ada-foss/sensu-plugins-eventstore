@@ -137,6 +137,9 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
                        .sort  { |node| DateTime.parse node.xpath('.//updated').text }
                        .last
 
+
+    ok if latest_entry.nil?
+    
     latest_event_url = latest_entry.at_xpath('.//id').content
 
     element_temp_file = get_stream latest_event_url, "application/json"
