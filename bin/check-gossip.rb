@@ -27,11 +27,12 @@ require 'sensu-plugin/check/cli'
 
 
 class CheckGossip < Sensu::Plugin::Check::CLI
-  option :discover_via_dns,
-         description: 'Whether to use DNS lookup to discover other cluster nodes. (Default: true)',
+  option :no_discover_via_dns,
+         description: 'Whether to use DNS lookup to discover other cluster nodes. (Default: false)',
+         boolean: true,
          short: '-v',
-         long: '--discover_via_dns discover_via_dns',
-         default: 'true'
+         long: '--no_discover_via_dns',
+         default: false
 
   option :cluster_dns,
          description: 'DNS name from which other nodes can be discovered.',
@@ -58,12 +59,11 @@ class CheckGossip < Sensu::Plugin::Check::CLI
          default: '4'
 
   def run
-    discover_via_dns = config[:discover_via_dns]
+    no_discover_via_dns = config[:no_discover_via_dns]
     gossip_address = config[:gossip_address]
     gossip_port = config[:gossip_port]
-    expected_nodes = config[:expected_nodes].to_i
 
-    if discover_via_dns
+    unless no_discover_via_dns
       cluster_dns = config[:cluster_dns]
 
       helper = IpHelper.new
