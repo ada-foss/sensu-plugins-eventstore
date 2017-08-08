@@ -59,11 +59,18 @@ class CheckGossip < Sensu::Plugin::Check::CLI
          proc: proc(&:to_i),
          default: 4
 
+  option :epoch_threshold,
+         description: 'The maximum allowable threshold before the epoch position is considered to be too far behind and trigger a critical alert. (-1 for no threshold) (Default 0, triggers on non-equal epoch position with master)',
+         long: '--epoch_threshold',
+         proc: proc(&:to_i),
+         default: 0
+
   def run
     no_discover_via_dns = config[:no_discover_via_dns]
     gossip_address = config[:gossip_address]
     gossip_port = config[:gossip_port]
     expected_nodes = config[:expected_nodes]
+    epoch_threshold = config[:epoch_threshold]
 
     unless no_discover_via_dns
       cluster_dns = config[:cluster_dns]
@@ -76,7 +83,7 @@ class CheckGossip < Sensu::Plugin::Check::CLI
       expected_nodes = helper.get_ips_in_cluster cluster_dns
     end
 
-    check_node gossip_address, gossip_port, expected_nodes
+    check_node gossip_address, gossip_port, expected_nodes, epoch_threshold
   end
 
   def get_master_count(document)
@@ -137,8 +144,8 @@ class CheckGossip < Sensu::Plugin::Check::CLI
     nodes.all? { |node| node_is_alive? node }
   end
 
-  def target_epoch_up_to_date?(document)
-    get_target_epoch(document) == get_master_epoch(document)
+  def target_epoch_up_to_date?(document, epoch_threshold)
+    get_master_epoch(document) - get_target_epoch(document) <= epoch_threshold
   end
 
   def critical_missing_nodes(xml_doc, expected_nodes)
@@ -167,7 +174,7 @@ class CheckGossip < Sensu::Plugin::Check::CLI
     node.content == 'true'
   end
 
-  def check_node(gossip_address, gossip_port, expected_nodes)
+  def check_node(gossip_address, gossip_port, expected_nodes, epoch_threshold)
     puts "\nchecking gossip at #{gossip_address}:#{gossip_port}"
 
     begin
@@ -191,8 +198,12 @@ class CheckGossip < Sensu::Plugin::Check::CLI
     puts "Checking node state"
     warn_nodes_not_ready xml_doc unless all_nodes_master_or_slave? xml_doc
 
-    puts "Checking that target epoch is at same position as master"
-    critical_target_behind_master xml_doc unless target_epoch_up_to_date? xml_doc
+    if epoch_threshold < 0
+      puts "Skipping epoch position check"
+    else
+      puts "Checking that target epoch is not lagging too far behind master"
+      critical_target_behind_master xml_doc unless target_epoch_up_to_date? xml_doc, epoch_threshold
+    end
 
     ok "#{gossip_address} is gossiping with #{expected_nodes} nodes, all nodes are alive, exactly one master node was found, all other nodes are in the 'Slave' state, and all nodes are up to date."
   end
