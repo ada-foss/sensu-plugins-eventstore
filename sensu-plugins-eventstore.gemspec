@@ -2,19 +2,18 @@ require 'date'
 
 Gem::Specification.new do |s|
   s.name                   = 'sensu-plugins-eventstore'
-  s.version                = '0.0.24'
+  s.version                = '0.0.25'
   s.date                   = Date.today.to_s
   s.summary                = "sensu-plugins for event store"
   s.description            = "A collection of checks and metrics for event store, designed for sensu"
-  s.authors                = ['Jamie Wroe']
+  s.authors                = ['Jamie Wroe', 'Berin Smaldon']
   s.email                  = 'Jamie.Wroe@live.co.uk'
   s.executables            = Dir.glob('bin/**/*').map { |file| File.basename(file) }
   s.files                  = Dir.glob('{bin,lib}/**/*') + %w(LICENSE README.md CHANGELOG.md)
-  s.homepage               = 'https://github.com/JWroe/sensu-plugins-eventstore'
+  s.homepage               = 'https://github.com/bsmaldon/sensu-plugins-eventstore'
   s.license                = 'MIT'
   s.required_ruby_version  = '>= 1.9.3'
-  s.metadata               = { 'maintainer'         => '@JWroe',
-                               'development_status' => 'active',
+  s.metadata               = { 'development_status' => 'active',
                                'production_status'  => 'unstable - testing recommended',
                                'release_draft'      => 'false',
                                'release_prerelease' => 'false'
