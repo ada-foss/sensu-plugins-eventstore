@@ -2,7 +2,7 @@ require 'date'
 
 Gem::Specification.new do |s|
   s.name                   = 'sensu-plugins-eventstore'
-  s.version                = '0.0.25'
+  s.version                = '0.0.26'
   s.date                   = Date.today.to_s
   s.summary                = "sensu-plugins for event store"
   s.description            = "A collection of checks and metrics for event store, designed for sensu"
