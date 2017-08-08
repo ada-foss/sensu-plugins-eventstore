@@ -56,12 +56,14 @@ class CheckGossip < Sensu::Plugin::Check::CLI
          description: 'The total number of nodes we expect to be gossiping, including this one. (Default 4)',
          short: '-e',
          long: '--expected_nodes expected_nodes',
-         default: '4'
+         proc: proc(&:to_i),
+         default: 4
 
   def run
     no_discover_via_dns = config[:no_discover_via_dns]
     gossip_address = config[:gossip_address]
     gossip_port = config[:gossip_port]
+    expected_nodes = config[:expected_nodes]
 
     unless no_discover_via_dns
       cluster_dns = config[:cluster_dns]
