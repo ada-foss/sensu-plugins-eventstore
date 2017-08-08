@@ -61,7 +61,8 @@ class CheckGossip < Sensu::Plugin::Check::CLI
 
   option :epoch_threshold,
          description: 'The maximum allowable threshold before the epoch position is considered to be too far behind and trigger a critical alert. (-1 for no threshold) (Default 0, triggers on non-equal epoch position with master)',
-         long: '--epoch_threshold',
+         short: '-t',
+         long: '--epoch_threshold epoch_threshold',
          proc: proc(&:to_i),
          default: 0
 
@@ -145,7 +146,7 @@ class CheckGossip < Sensu::Plugin::Check::CLI
   end
 
   def target_epoch_up_to_date?(document, epoch_threshold)
-    get_master_epoch(document) - get_target_epoch(document) <= epoch_threshold
+    get_master_epoch(document).to_i - get_target_epoch(document).to_i <= epoch_threshold
   end
 
   def critical_missing_nodes(xml_doc, expected_nodes)
