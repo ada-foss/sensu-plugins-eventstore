@@ -84,9 +84,9 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
          default: ""
 
   option :eventstore_identifier,
-         description: 'An optional identifier to tag the data in graphite with a specific eventstore instance (Default "", meaning no additional tag at all)',
+         description: 'An optional identifier to tag the data in graphite with a specific eventstore instance (Default nil, meaning no additional tag at all)',
          long: '--eventstore_identifier eventstore_identifier',
-         default: ''
+         default: nil
 
   option :verbose,
            description: 'output extra messaging (Default false)',
@@ -195,7 +195,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   end
 
   def get_eventstore_identifier
-    eventstore_identifier = config[:eventstore_identifer] == '' ? '' : ( config[:eventstore_identifier] + '.' )
+    eventstore_identifier = config[:eventstore_identifer].nil? ? '' : ( config[:eventstore_identifier] + '.' )
   end
 
   def create_proc_mapping(source_name, target_name)
