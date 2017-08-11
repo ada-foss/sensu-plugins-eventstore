@@ -28,11 +28,12 @@ require 'ip-helper.rb'
 require 'json'
 
 class Stats < Sensu::Plugin::Metric::CLI::Graphite
-  option :discover_via_dns,
-         description: 'Whether to use DNS lookup to discover other cluster nodes. (Default: true)',
-         short: '-k',
-         long: '--discover_via_dns discover_via_dns',
-         default: 'true'
+  option :no_discover_via_dns,
+         description: 'Whether to use DNS lookup to discover other cluster nodes. (Default: false)',
+         boolean: true,
+         short: '-v',
+         long: '--no_discover_via_dns',
+         default: false
 
   option :cluster_dns,
          description: 'DNS name from which other nodes can be discovered.',
@@ -82,6 +83,11 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
          long: '--queue_scheme queue_scheme',
          default: ""
 
+  option :eventstore_identifier,
+         description: 'An optional identifier to tag the data in graphite with a specific eventstore instance (Default "", meaning no additional tag at all)',
+         long: '--eventstore_identifier eventstore_identifier',
+         default: ''
+
   option :verbose,
            description: 'output extra messaging (Default false)',
            short: '-v',
@@ -96,11 +102,11 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   end
 
   def run
-    discover_via_dns = config[:discover_via_dns]
+    no_discover_via_dns = config[:no_discover_via_dns]
     address = config[:address]
     port = config[:port]
 
-    if discover_via_dns
+    unless no_discover_via_dns
       cluster_dns = config[:cluster_dns]
 
       helper = IpHelper.new
@@ -188,16 +194,20 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
     stats_dict[stat_name_mapping[:target_name]] = stat_value
   end
 
+  def get_eventstore_identifier
+    eventstore_identifier = config[:eventstore_identifer] == '' ? '' : ( config[:eventstore_identifier] + '.' )
+  end
+
   def create_proc_mapping(source_name, target_name)
     {
         source_name: source_name,
-        target_name:"#{config[:proc_scheme]}.#{target_name}"
+        target_name:"#{config[:proc_scheme]}.#{get_eventstore_identifier}#{target_name}"
     }
   end
   def create_queue_mapping(source_name, target_name)
     {
         source_name: source_name,
-        target_name:"#{get_queue_scheme}.#{target_name}"
+        target_name:"#{get_queue_scheme}.#{get_eventstore_identifier}#{target_name}"
     }
   end
 
