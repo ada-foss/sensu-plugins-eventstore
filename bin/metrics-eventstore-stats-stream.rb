@@ -195,7 +195,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   end
 
   def get_eventstore_identifier
-    eventstore_identifier = config[:eventstore_identifer].nil? ? '' : ( config[:eventstore_identifier] + '.' )
+    eventstore_identifier = config[:eventstore_identifier].nil? ? '' : ( config[:eventstore_identifier] + '.' )
   end
 
   def create_proc_mapping(source_name, target_name)

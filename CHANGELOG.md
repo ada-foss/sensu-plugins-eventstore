@@ -1,6 +1,12 @@
 #Change Log
 This CHANGELOG follows the format listed at [Keep A Changelog](http://keepachangelog.com/)
 
+## [0.0.28] - 2017-08-14
+### Changed
+- changed add\_runtime\_dependency in gemspec for sensu-plugin to >= 2.0.1 - as we weren't able to proceed on 1.2.0 which was fixed, will now start testing against 2.0.1
+### Fixed
+- typo stopping eventstore\_identifier parameter from taking effect
+
 ## [0.0.27] - 2017-08-11
 ### Added
 - --eventstore\_identifier argument for metrics-eventstore-stats-stream.rb so that more than one eventstore instance from one box can be monitored
