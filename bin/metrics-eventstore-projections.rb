@@ -106,7 +106,7 @@ class StatsProjections < Sensu::Plugin::Check::CLI
     wanted_numeric_metrics = %w(writesInProgress readsInProgress partitionsCached progress eventsProcessedAfterRestart bufferedEvents writePendingEventsBeforeCheckpoint writePendingEventsAfterCheckpoint)
 
     this_prefix = get_graphite_prefix projection
-    puts "#{this_prefix}.status #{get_encoded_status projection.gsub('$','')} #{time_of_reading}"
+    puts "#{this_prefix}.status #{get_encoded_status projection} #{time_of_reading}"
     
     wanted_numeric_metrics.each { |metric|
       puts "#{this_prefix}.#{metric} #{projection[metric]} #{time_of_reading}"
@@ -121,7 +121,7 @@ class StatsProjections < Sensu::Plugin::Check::CLI
   end
 
   def get_graphite_prefix(projection)
-    "#{get_format}.#{projection['name']}"
+    "#{get_format}.#{projection['name'].gsub('$','')}"
   end
 
   def get_encoded_status(projection)
