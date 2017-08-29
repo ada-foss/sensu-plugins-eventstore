@@ -68,7 +68,6 @@ class StatsProjections < Sensu::Plugin::Check::CLI
     no_discover_via_dns = config[:no_discover_via_dns]
     api_address = config[:api_address]
     api_port = config[:api_port]
-    @progress_minimum = config[:progress_minimum]
 
     unless no_discover_via_dns
       cluster_dns = config[:cluster_dns]
