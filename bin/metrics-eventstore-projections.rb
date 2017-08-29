@@ -98,6 +98,8 @@ class StatsProjections < Sensu::Plugin::Check::CLI
       put_projection_metrics projection, time_now
     }
 
+    ok
+
   end
 
   def put_projection_metrics(projection, time_of_reading)
@@ -110,7 +112,6 @@ class StatsProjections < Sensu::Plugin::Check::CLI
       puts "#{this_prefix}.#{metric} #{projection[metric]} #{time_of_reading}"
     }
 
-    ok
   end
 
   def get_format
