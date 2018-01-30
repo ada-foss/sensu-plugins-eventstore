@@ -94,6 +94,17 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
            long: '--verbose verbose',
            default: 'false'
 
+  option :real_ip,
+           description: 'Due to being behind proxy the ip address is hdden',
+           short: '-ip',
+           long: '--real_ip'
+
+  option :real_port,
+           description: 'Due to Being Behind Proxy the Port is Hidden',
+           short: '-port',
+           long: '--real_port'
+
+
   def get_queue_scheme
     return config[:queue_scheme] unless config[:queue_scheme].empty?
     #get the first part of the cluster dns
@@ -125,7 +136,14 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   end
 
   def collect_metrics(address, port)
-    stream_url = "http://#{address}:#{port}/streams/$stats-#{address}:#{port}"
+    real_ip = config[:real_ip]
+    real_port = config[:real_port]
+
+    if real_ip != nil
+       stream_url = "http://#{address}:#{port}/streams/$stats-#{real_ip}:#{real_port}"
+    else
+       stream_url = "http://#{address}:#{port}/streams/$stats-#{address}:#{port}"
+    end
 
     force_web_requests_to_use_temp_files
     stream_temp_file = get_stream stream_url, "application/atom+xml"
