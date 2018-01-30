@@ -97,7 +97,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
   option :stream_label,
            description: 'Stream label as it appears in eventstore, can differ behind proxies',
            short: '-l',
-           long: '--label'
+           long: '--label stream_label'
 
 
   def get_queue_scheme
