@@ -94,15 +94,10 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
            long: '--verbose verbose',
            default: 'false'
 
-  option :real_ip,
-           description: 'Due to being behind proxy the ip address is hdden',
-           short: '-ip',
-           long: '--real_ip'
-
-  option :real_port,
-           description: 'Due to Being Behind Proxy the Port is Hidden',
-           short: '-port',
-           long: '--real_port'
+  option :stream_label,
+           description: 'Stream label as it appears in eventstore, can differ behind proxies',
+           short: '-l',
+           long: '--label'
 
 
   def get_queue_scheme
@@ -116,6 +111,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
     no_discover_via_dns = config[:no_discover_via_dns]
     address = config[:address]
     port = config[:port]
+    stream_label = config[:stream_label]
 
     unless no_discover_via_dns
       cluster_dns = config[:cluster_dns]
@@ -126,7 +122,7 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
       critical address unless helper.is_valid_v4_ip address
     end
 
-    collect_metrics address, port
+    collect_metrics address, port, stream_label
   end
 
   def force_web_requests_to_use_temp_files
@@ -135,12 +131,10 @@ class Stats < Sensu::Plugin::Metric::CLI::Graphite
     OpenURI::Buffer.const_set 'StringMax', -1
   end
 
-  def collect_metrics(address, port)
-    real_ip = config[:real_ip]
-    real_port = config[:real_port]
+  def collect_metrics(address, port, stream_label)
 
-    if real_ip != nil
-       stream_url = "http://#{address}:#{port}/streams/$stats-#{real_ip}:#{real_port}"
+    if stream_label != nil
+       stream_url = "http://#{address}:#{port}/streams/$stats-#{stream_label}"
     else
        stream_url = "http://#{address}:#{port}/streams/$stats-#{address}:#{port}"
     end
