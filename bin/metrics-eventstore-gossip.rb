@@ -92,7 +92,7 @@ class GossipMetrics < Sensu::Plugin::Metric::CLI::Graphite
     this_member = get_this_member json_data
 
     # time is taken to be from the point of view of eventstore
-    member_time = DateTime.parse this_member['timeStamp']
+    member_time = (DateTime.parse this_member['timeStamp']).strftime('%s')
 
     # state is a special case that need enumeration
     output ( @prefix + 'state' ), (get_encoded_state this_member['state']), member_time
