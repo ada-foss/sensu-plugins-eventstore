@@ -22,8 +22,9 @@
 #
 
 require 'json'
+require 'date'
 require 'ip-helper.rb'
-require 'sensu-plugin/check/cli'
+require 'sensu-plugin/metric/cli'
 
 
 class GossipMetrics < Sensu::Plugin::Metric::CLI::Graphite
