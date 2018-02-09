@@ -26,7 +26,7 @@ require 'ip-helper.rb'
 require 'sensu-plugin/check/cli'
 
 
-class CheckGossip < Sensu::Plugin::Check::CLI
+class GossipMetrics < Sensu::Plugin::Metric::CLI::Graphite
   option :no_discover_via_dns,
          description: 'Whether to use DNS lookup to discover other cluster nodes. (Default: false)',
          boolean: true,
