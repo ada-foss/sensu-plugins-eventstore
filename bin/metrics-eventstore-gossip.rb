@@ -69,8 +69,8 @@ class GossipMetrics < Sensu::Plugin::Metric::CLI::Graphite
     address = config[:address]
     port = config[:port]
 
-    eventstore_identifier = config[:eventstore_identifier].nil? ? '' : ( config[:eventstore_identifier] + '.' )
-    @prefix = config[:metric_path] + eventstore_identifier
+    eventstore_identifier = config[:eventstore_identifier].nil? ? '' : ( '.' + config[:eventstore_identifier] )
+    @prefix = config[:metric_path] + eventstore_identifier + '.'
 
     unless no_discover_via_dns
       cluster_dns = config[:cluster_dns]
@@ -95,7 +95,7 @@ class GossipMetrics < Sensu::Plugin::Metric::CLI::Graphite
     member_time = DateTime.parse this_member['timeStamp']
 
     # state is a special case that need enumeration
-    output ( @prefix + '.state' ), (get_encoded_state this_member['state']), member_time
+    output ( @prefix + 'state' ), (get_encoded_state this_member['state']), member_time
 
     # other gossip metrics are passed straight through
     [
@@ -105,7 +105,7 @@ class GossipMetrics < Sensu::Plugin::Metric::CLI::Graphite
       'epochPosition',
       'epochNumber'
     ].each do |metric|
-      output ( @prefix + '.' + metric ), this_member[metric], member_time
+      output ( @prefix + metric ), this_member[metric], member_time
     end
 
     ok
