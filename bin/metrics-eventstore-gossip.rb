@@ -70,7 +70,7 @@ class GossipMetrics < Sensu::Plugin::Metric::CLI::Graphite
     port = config[:port]
 
     eventstore_identifier = config[:eventstore_identifier].nil? ? '' : ( '.' + config[:eventstore_identifier] )
-    @prefix = config[:metric_path] + eventstore_identifier + '.'
+    @prefix = config[:metric_path] + eventstore_identifier + '.gossip.'
 
     unless no_discover_via_dns
       cluster_dns = config[:cluster_dns]
