@@ -85,7 +85,7 @@ class StatsProjections < Sensu::Plugin::Check::CLI
   def collect_metrics(api_address, api_port)
 
     begin
-      connection_url = "http://#{api_address}:#{api_port}/projections/any"
+      connection_url = "http://#{api_address}:#{api_port}/projections/continuous"
       projections_api = open(connection_url)
     rescue StandardError
       critical "Could not connect to #{connection_url} to check api, has event store fallen over on this node? "
