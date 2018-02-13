@@ -102,26 +102,33 @@ class StreamCountMetrics < Sensu::Plugin::Metric::CLI::Graphite
       expected_nodes = helper.get_ips_in_cluster cluster_dns
     end
 
+    should_warn = false
     streams.each do |stream|
-      count_stream(address, port, stream)
+      should_warn = should_warn or count_stream(address, port, stream)
     end
 
+    warn 'one or more streams could not be accessed' if should_warn
     ok
   end
 
   def count_stream(address, port, stream)
-    json_data = open("http://#{address}:#{port}/streams/#{stream}",
-                     'Accept'=>'application/json') { |f| JSON.parse f.read }
+    begin
+      json_data = open("http://#{address}:#{port}/streams/#{stream}",
+                       'Accept'=>'application/json') { |f| JSON.parse f.read }
 
-    # read the event number from the eTag
-    # not sure how stable this is
-    # an alternative method would be to read streams/#{stream}/head/backward/1 and inspect next/previous
-    #
-    # we do this rather than inspect event titles because event titles wouldn't be informative in the
-    # case of $ce-* and $et-* streams
-    etag_count, _ = json_data['eTag'].split ';', 2
+      # read the event number from the eTag
+      # not sure how stable this is
+      # an alternative method would be to read streams/#{stream}/head/backward/1 and inspect next/previous
+      #
+      # we do this rather than inspect event titles because event titles wouldn't be informative in the
+      # case of $ce-* and $et-* streams
+      etag_count, _ = json_data['eTag'].split ';', 2
+    rescue OpenURI::HttpError
+      etag_count = -1
+    end
 
     output ( @prefix + stream + '.count' ), etag_count, Time.now.to_i
+    return etag_count == -1
   end
 
 end
