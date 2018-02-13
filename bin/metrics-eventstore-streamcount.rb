@@ -104,10 +104,10 @@ class StreamCountMetrics < Sensu::Plugin::Metric::CLI::Graphite
 
     should_warn = false
     streams.each do |stream|
-      should_warn = should_warn or count_stream(address, port, stream)
+      should_warn |= count_stream(address, port, stream)
     end
 
-    warn 'one or more streams could not be accessed' if should_warn
+    warning 'one or more streams could not be accessed' if should_warn
     ok
   end
 
