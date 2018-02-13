@@ -123,7 +123,7 @@ class StreamCountMetrics < Sensu::Plugin::Metric::CLI::Graphite
       # we do this rather than inspect event titles because event titles wouldn't be informative in the
       # case of $ce-* and $et-* streams
       etag_count, _ = json_data['eTag'].split ';', 2
-    rescue OpenURI::HttpError
+    rescue OpenURI::HTTPError
       etag_count = -1
     end
 
