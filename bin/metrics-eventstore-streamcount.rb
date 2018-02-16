@@ -102,12 +102,10 @@ class StreamCountMetrics < Sensu::Plugin::Metric::CLI::Graphite
       expected_nodes = helper.get_ips_in_cluster cluster_dns
     end
 
-    should_warn = false
     streams.each do |stream|
-      should_warn |= count_stream(address, port, stream)
+      count_stream(address, port, stream)
     end
 
-    warning 'one or more streams could not be accessed' if should_warn
     ok
   end
 
@@ -124,11 +122,15 @@ class StreamCountMetrics < Sensu::Plugin::Metric::CLI::Graphite
       # case of $ce-* and $et-* streams
       etag_count, _ = json_data['eTag'].split ';', 2
 
-      output ( @prefix + stream + '.count' ), etag_count, Time.now.to_i
-      return false
-    rescue OpenURI::HTTPError
-      return true
+    rescue OpenURI::HTTPError => e
+      if e.io.status[0] == '404'
+        etag_count = '0'
+      else
+        raise
+      end
     end
+
+    output ( @prefix + stream + '.count' ), etag_count, Time.now.to_i
   end
 
 end
