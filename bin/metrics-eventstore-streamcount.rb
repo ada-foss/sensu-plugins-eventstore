@@ -77,6 +77,16 @@ class StreamCountMetrics < Sensu::Plugin::Metric::CLI::Graphite
          long: '--streams streams',
          default: nil
 
+  option :username,
+         description: 'Username of the user to access eventstore as (Default "admin")',
+         long: '--username username',
+         default: 'admin'
+
+  option :password,
+         description: 'If password is specified the username and password will be used to access eventstore',
+         long: '--password password',
+         default: nil
+
   def run
     no_discover_via_dns = config[:no_discover_via_dns]
     address = config[:address]
@@ -84,6 +94,9 @@ class StreamCountMetrics < Sensu::Plugin::Metric::CLI::Graphite
 
     eventstore_identifier = config[:eventstore_identifier].nil? ? '' : ( '.' + config[:eventstore_identifier] )
     @prefix = config[:metric_path] + eventstore_identifier + '.streams.'
+
+    @username = config[:username]
+    @password = config[:password]
 
     if config[:streams].nil?
       streams = settings[config[:json_config]]['streams']
@@ -111,8 +124,14 @@ class StreamCountMetrics < Sensu::Plugin::Metric::CLI::Graphite
 
   def count_stream(address, port, stream)
     begin
-      json_data = open("http://#{address}:#{port}/streams/#{stream}",
-                       'Accept'=>'application/json') { |f| JSON.parse f.read }
+      if @password.nil?
+        json_data = open("http://#{address}:#{port}/streams/#{stream}",
+                         'Accept'=>'application/json') { |f| JSON.parse f.read }
+      else
+        json_data = open("http://#{address}:#{port}/streams/#{stream}",
+                         'Accept'=>'application/json',
+                         http_basic_authentication:[@username,@password]) { |f| JSON.parse f.read }
+      end
 
       # read the event number from the eTag
       # not sure how stable this is
